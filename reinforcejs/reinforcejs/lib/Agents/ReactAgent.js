@@ -91,9 +91,11 @@ TDAgent.prototype = {
     this.r1 = null;
     this.s0 = null;
     this.s1 = null;
+    this.s2 = null;
 
     this.a0 = null;
     this.a1 = null;
+    this.a2 = null;
   },
   resetEpisode: function() {
     // an episode finished
@@ -102,7 +104,6 @@ TDAgent.prototype = {
     // act according to epsilon greedy policy
     var poss = this.env.allowedActions(s);
     var probs = [];
-    console.log(this.P);
     for(var i=0,n=poss.length;i<n;i++) {
       probs.push(this.P[poss[i]*this.ns+s]);
     }
@@ -118,12 +119,12 @@ TDAgent.prototype = {
     this.s0 = this.s1;
     this.a0 = this.a1;
     this.s1 = this.s2;
+    this.s2 = s;
     this.a1 = this.a2;
     this.a2 = a;
-    this.s2 = s;
     return a;
   },
-  learn: function(r){
+  learn: function(r2){
     // takes reward for previous action, which came from a call to act()
     if(!(this.r0 == null)) {
       this.learnFromTuple(this.s0, this.a0, this.r0, this.s1, this.a1, this.lambda);
@@ -132,7 +133,8 @@ TDAgent.prototype = {
         this.plan();
       }
     }
-    this.r0 = r;
+    this.r0 = this.r1; // store this for next update
+    this.r1 = r2;
 
   },
   updateModel: function(s0, a0, r0, s1) {

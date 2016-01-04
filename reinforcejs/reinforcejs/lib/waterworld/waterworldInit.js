@@ -196,8 +196,7 @@
     
     function resetAgent() {
       eval($("#agentspec").val())
-      var brain = new RL.TDAgent(env, spec);
-
+      var brain = new RL.DQNAgent(env, spec);
       w.agents[0].brain = brain;
     }
 
@@ -272,11 +271,8 @@
       w.agents = [];
       for(var k = 0; k < 1; k++) {
         var a = new Agent();
-        a.allowedActions = function(s){return [0,1,2,3]};
         env = a;
-
-        a.brain = new RL.TDAgent(env, spec); // give agent a TD brain
-
+        a.brain = new RL.DQNAgent(env, spec); // give agent a TD brain
         //a.brain = new RL.RecurrentReinforceAgent(env, {});
         w.agents.push(a);
         smooth_reward_history.push([]);

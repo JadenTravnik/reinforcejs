@@ -1,3 +1,4 @@
+
     // Gridworld
     var Gridworld = function(){
       this.Rarr = null; // reward array
@@ -15,18 +16,20 @@
         // specify some rewards
         var Rarr = R.zeros(this.gs);
         var T = R.zeros(this.gs);
+        Rarr[55] = 1;
 
         Rarr[54] = -1;
+        //Rarr[63] = -1;
         Rarr[64] = -1;
         Rarr[65] = -1;
         Rarr[85] = -1;
         Rarr[86] = -1;
+
         Rarr[37] = -1;
         Rarr[33] = -1;
+        //Rarr[77] = -1;
         Rarr[67] = -1;
-
-        this.terminalState = 99;
-        Rarr[99] = 1;
+        Rarr[57] = -1;
 
         // make some cliffs
         for(q=0;q<8;q++) { var off = (q+1)*this.gh+2; T[off] = 1; Rarr[off] = 0; }
@@ -44,7 +47,7 @@
         if(this.T[s] === 1) {
           // cliff! oh no!
           // var ns = 0; // reset to state zero (start)
-        } else if(s === 99) {
+        } else if(s === 55) {
           // agent wins! teleport to start
           var ns = this.startState();
           while(this.T[ns] === 1) {
@@ -55,19 +58,14 @@
           var nx, ny;
           var x = this.stox(s);
           var y = this.stoy(s);
-          allowedActions = this.allowedActions(s);
-          if (allowedActions.indexOf(a) > -1){
-            if(a === 0) {nx=x-1; ny=y;} // left
-            if(a === 1) {nx=x; ny=y-1;} // up
-            if(a === 2) {nx=x; ny=y+1;} // down
-            if(a === 3) {nx=x+1; ny=y;} // right
-            var ns = nx*this.gh+ny;
-            if(this.T[ns] === 1) {
-              // actually never mind, this is a wall. reset the agent
-              var ns = s;
-            }
-          } else {
-          var ns = s;
+          if(a === 0) {nx=x-1; ny=y;}
+          if(a === 1) {nx=x; ny=y-1;}
+          if(a === 2) {nx=x; ny=y+1;}
+          if(a === 3) {nx=x+1; ny=y;}
+          var ns = nx*this.gh+ny;
+          if(this.T[ns] === 1) {
+            // actually never mind, this is a wall. reset the agent
+            var ns = s;
           }
         }
         // gridworld is deterministic, so return only a single next state
@@ -199,27 +197,12 @@
         }
       }
 
-      // append agent position circle
-      svg.append('circle')
-        .attr('cx', -100)
-        .attr('cy', -100)
-        .attr('r', 15)
-        .attr('fill', '#FF0')
-        .attr('stroke', '#000')
-        .attr('id', 'cpos');
-
     }
 
     var drawGrid = function() {
       var gh= env.gh; // height in cells
       var gw = env.gw; // width in cells
       var gs = env.gs; // total number of cells
-
-      var sx = env.stox(state);
-      var sy = env.stoy(state);      
-      d3.select('#cpos')
-        .attr('cx', sx*cs+cs/2)
-        .attr('cy', sy*cs+cs/2);
 
       // updates the grid with current state of world/agent
       for(var y=0;y<gh;y++) {
@@ -228,26 +211,8 @@
           var ycoord = y*cs;
           var r=255,g=255,b=255;
           var s = env.xytos(x,y);
-          
-          // get value of state s under agent policy
-          if(typeof agent.V !== 'undefined') {
-            var vv = agent.V[s];
-          } else if(typeof agent.Q !== 'undefined'){
-            var poss = env.allowedActions(s);
-            var vv = -1;
-            for(var i=0,n=poss.length;i<n;i++) {
-              var qsa = agent.Q[poss[i]*gs+s];
-              if(i === 0 || qsa > vv) { vv = qsa; }
-            }
-          }
-          
-          // var poss = env.allowedActions(s);
-          // var vv = -1;
-          // for(var i=0,n=poss.length;i<n;i++) {
-          //   var qsa = agent.e[poss[i]*gs+s];
-          //   if(i === 0 || qsa > vv) { vv = qsa; }
-          // }
 
+          var vv = agent.V[s];
           var ms = 100;
           if(vv > 0) { g = 255; r = 255 - vv*ms; b = 255 - vv*ms; }
           if(vv < 0) { g = 255 + vv*ms; r = 255; b = 255 + vv*ms; }
@@ -275,14 +240,14 @@
 
           // write value
           var tv = tvs[s];
-          tv.text(vv.toFixed(2));
+          tv.text(agent.V[s].toFixed(2));
           
           // update policy arrows
           var paa = pas[s];
           for(var a=0;a<4;a++) {
             var pa = paa[a];
             var prob = agent.P[a*gs+s];
-            if(prob < 0.01) { pa.attr('visibility', 'hidden'); }
+            if(prob === 0) { pa.attr('visibility', 'hidden'); }
             else { pa.attr('visibility', 'visible'); }
             var ss = cs/2 * prob * 0.9;
             if(a === 0) {nx=-ss; ny=0;}
@@ -311,72 +276,28 @@
       drawGrid(); // redraw
     }
 
-    var goslow = function() {
-      steps_per_tick = 1;
+    var updatePolicy = function() {
+      agent.updatePolicy();
+      drawGrid();
     }
-    var gonormal = function(){
-      steps_per_tick = 10;
+
+    var evaluatePolicy = function() {
+      agent.evaluatePolicy();
+      drawGrid();
     }
-    var gofast = function() {
-      steps_per_tick = 25;
-    }
-    var steps_per_tick = 1;
+
     var sid = -1;
-    var nsteps_history = [];
-    var nsteps_counter = 0;
-    var nextAction = 2;
-    var nflot = 100;
-    var tdlearn = function() {
+    var runValueIteration = function() {
       if(sid === -1) {
         sid = setInterval(function(){
-          for(var k=0;k<steps_per_tick;k++) {
-
-            // var a = agent.act(state);
-            // var obs = env.sampleNextState(state, a); // run it through environment dynamics
-
-            // agent.learn(obs.r); // allow opportunity for the agent to learn
-            // state = obs.ns; // evolve environment to next state
-
-            // Flipped
-            
-            var obs = env.sampleNextState(state, nextAction); // run it through environment dynamics
-            state = obs.ns; // evolve environment to next state
-            var a = agent.act(state);
-            nextAction = a;
-
-            agent.learn(obs.r); // allow opportunity for the agent to learn
-            state = obs.ns; // evolve environment to next state
-
-
-
-            nsteps_counter += 1;
-            console.log(state);
-            if(state == 99) {
-              agent.resetEpisode();
-              // record the reward achieved
-              if(nsteps_history.length >= nflot) {
-                nsteps_history = nsteps_history.slice(1);
-              }
-              nsteps_history.push(nsteps_counter);
-              nsteps_counter = 0;
-            }
-          }
-          // keep track of reward history
-          drawGrid(); // draw
-        }, 20);
+          agent.evaluatePolicy();
+          agent.updatePolicy();
+          drawGrid();
+        }, 100);
       } else { 
         clearInterval(sid); 
         sid = -1;
       }
-    }
-
-    function resetAgent() {
-      eval($("#agentspec").val())
-      agent = new RL.TDAgent(env, spec);
-      $("#slider").slider('value', agent.epsilon);
-      $("#eps").html(agent.epsilon.toFixed(2));
-      state = env.startState(); // move state to beginning too
-      drawGrid();
     }
 
     function resetAll() {
@@ -385,72 +306,12 @@
       drawGrid();
     }
 
-    function initGraph() {
-      var container = $("#flotreward");
-      var res = getFlotRewards();
-      series = [{
-        data: res,
-        lines: {fill: true}
-      }];
-      var plot = $.plot(container, series, {
-        grid: {
-          borderWidth: 1,
-          minBorderMargin: 20,
-          labelMargin: 10,
-          backgroundColor: {
-            colors: ["#FFF", "#e4f4f4"]
-          },
-          margin: {
-            top: 10,
-            bottom: 10,
-            left: 10,
-          }
-        },
-        xaxis: {
-          min: 0,
-          max: nflot
-        },
-        yaxis: {
-          min: 0,
-          max: 250
-        }
-      });
-
-      setInterval(function(){
-        series[0].data = getFlotRewards();
-        plot.setData(series);
-        plot.draw();
-      }, 100);
-    }
-    function getFlotRewards() {
-      // zip rewards into flot data
-      var res = [];
-      for(var i=0,n=nsteps_history.length;i<n;i++) {
-        res.push([i, nsteps_history[i]]);
-      }
-      return res;
-    }
-
-    var state;
     var agent, env;
     function start() {
       env = new Gridworld(); // create environment
-      state = env.startState();
-      eval($("#agentspec").val())
-      agent = new RL.TDAgent(env, spec);
-      //agent = new RL.ActorCriticAgent(env, {'gamma':0.9, 'epsilon':0.2});
-
-      // slider sets agent epsilon
-      $( "#slider" ).slider({
-        min: 0,
-        max: 1,
-        value: agent.epsilon,
-        step: 0.01,
-        slide: function(event, ui) {
-          agent.epsilon = ui.value;
-          $("#eps").html(ui.value.toFixed(2));
-        }
-      });
+      agent = new RL.DPAgent(env, {'gamma':0.9}); // create an agent, yay!
+      initGrid();
+      drawGrid();
 
       $("#rewardslider").slider({
         min: -5,
@@ -468,18 +329,12 @@
         }
       });
 
-      $("#eps").html(agent.epsilon.toFixed(2));
-      $("#slider").slider('value', agent.epsilon);
-
-      // render markdown
+      // suntax highlighting
+      //marked.setOptions({highlight:function(code){ return hljs.highlightAuto(code).value; }});
       $(".md").each(function(){
         $(this).html(marked($(this).html()));
       });
       renderJax();
-
-      initGrid();
-      drawGrid();
-      initGraph();
     }
 
     var jaxrendered = false;

@@ -25,7 +25,6 @@
         Rarr[33] = -1;
         Rarr[67] = -1;
 
-        this.terminalState = 99;
         Rarr[99] = 1;
 
         // make some cliffs
@@ -324,34 +323,19 @@
     var sid = -1;
     var nsteps_history = [];
     var nsteps_counter = 0;
-    var nextAction = 2;
-    var nflot = 100;
+    var nflot = 1000;
     var tdlearn = function() {
       if(sid === -1) {
         sid = setInterval(function(){
           for(var k=0;k<steps_per_tick;k++) {
 
-            // var a = agent.act(state);
-            // var obs = env.sampleNextState(state, a); // run it through environment dynamics
-
-            // agent.learn(obs.r); // allow opportunity for the agent to learn
-            // state = obs.ns; // evolve environment to next state
-
-            // Flipped
-            
-            var obs = env.sampleNextState(state, nextAction); // run it through environment dynamics
-            state = obs.ns; // evolve environment to next state
             var a = agent.act(state);
-            nextAction = a;
+            var obs = env.sampleNextState(state, a); // run it through environment dynamics
 
             agent.learn(obs.r); // allow opportunity for the agent to learn
             state = obs.ns; // evolve environment to next state
-
-
-
             nsteps_counter += 1;
-            console.log(state);
-            if(state == 99) {
+            if(typeof obs.reset_episode !== 'undefined') {
               agent.resetEpisode();
               // record the reward achieved
               if(nsteps_history.length >= nflot) {
@@ -412,7 +396,7 @@
         },
         yaxis: {
           min: 0,
-          max: 250
+          max: 1000
         }
       });
 
