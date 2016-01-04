@@ -88,14 +88,14 @@ TDAgent.prototype = {
     // agent memory, needed for streaming updates
     // (s0,a0,r0,s1,a1,r1,...)
     this.r0 = null;
+    this.r1 = null;
     this.s0 = null;
     this.s1 = null;
-<<<<<<< HEAD
+    this.s2 = null;
 
-=======
->>>>>>> f128892cd50e02117db815b6a231742ac4d2069e
     this.a0 = null;
     this.a1 = null;
+    this.a2 = null;
   },
   resetEpisode: function() {
     // an episode finished
@@ -104,7 +104,6 @@ TDAgent.prototype = {
     // act according to epsilon greedy policy
     var poss = this.env.allowedActions(s);
     var probs = [];
-    console.log(this.P);
     for(var i=0,n=poss.length;i<n;i++) {
       probs.push(this.P[poss[i]*this.ns+s]);
     }
@@ -119,21 +118,13 @@ TDAgent.prototype = {
     // shift state memory
     this.s0 = this.s1;
     this.a0 = this.a1;
-<<<<<<< HEAD
     this.s1 = this.s2;
+    this.s2 = s;
     this.a1 = this.a2;
     this.a2 = a;
-    this.s2 = s;
     return a;
   },
-  learn: function(r){
-=======
-    this.s1 = s;
-    this.a1 = a;
-    return a;
-  },
-  learn: function(r1){
->>>>>>> f128892cd50e02117db815b6a231742ac4d2069e
+  learn: function(r2){
     // takes reward for previous action, which came from a call to act()
     if(!(this.r0 == null)) {
       this.learnFromTuple(this.s0, this.a0, this.r0, this.s1, this.a1, this.lambda);
@@ -142,12 +133,9 @@ TDAgent.prototype = {
         this.plan();
       }
     }
-<<<<<<< HEAD
-    this.r0 = r;
+    this.r0 = this.r1; // store this for next update
+    this.r1 = r2;
 
-=======
-    this.r0 = r1; // store this for next update
->>>>>>> f128892cd50e02117db815b6a231742ac4d2069e
   },
   updateModel: function(s0, a0, r0, s1) {
     // transition (s0,a0) -> (r0,s1) was observed. Update environment model
@@ -313,6 +301,7 @@ TDAgent.prototype = {
     }
   }
 }
+
 
 // exports
 global.TDAgent = TDAgent;

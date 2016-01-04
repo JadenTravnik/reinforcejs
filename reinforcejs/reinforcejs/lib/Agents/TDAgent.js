@@ -9,8 +9,28 @@ var getopt = function(opt, field_name, default_value) {
   return (typeof opt[field_name] !== 'undefined') ? opt[field_name] : default_value;
 }
 
-var zeros = R.zeros; // inherit these
-var assert = R.assert;
+var zeros = function(n) {
+    if(typeof(n)==='undefined' || isNaN(n)) { return []; }
+    if(typeof ArrayBuffer === 'undefined') {
+      // lacking browser support
+      var arr = new Array(n);
+      for(var i=0;i<n;i++) { arr[i] = 0; }
+      return arr;
+    } else {
+      return new Float64Array(n);
+    }
+  };
+  
+var assert = function assert(condition, message) {
+    // from http://stackoverflow.com/questions/15313418/javascript-assert
+    if (!condition) {
+      message = message || "Assertion failed";
+      if (typeof Error !== "undefined") {
+        throw new Error(message);
+      }
+      throw message; // Fallback
+    }
+  }
 var randi = R.randi;
 var randf = R.randf;
 
